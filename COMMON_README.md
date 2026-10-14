@@ -223,28 +223,97 @@ Multi_Repo_Simple/
 
 ---
 
-## 🔄 End-to-End Functional Flow Across Common Tables
+## 🔄 End-to-End Functional Flows Across Microservices & Common Tables
 
-1. **User Registration (`repo1-user-core-service` - Port 8081)**:
-   - Endpoint: `POST /api/users/register`
-   - Populates **Common Table 1 (`app_users`)** with user identity.
-   - Populates **Repo 1 Individual Tables (`user_profiles`, `user_credentials`)**.
-   - Emits log in **Common Table 2 (`audit_logs`)** (`service_name = "user-core-service"`).
-   - Emits welcome notification in **Common Table 3 (`system_notifications`)**.
+The application contains **3 interconnected functional business flows** that connect all 3 microservices and demonstrate how the **3 Common Tables** work together with the **Individual Tables**.
 
-2. **Order Placement (`repo2-order-service` - Port 8082)**:
-   - Endpoint: `POST /api/orders/create`
-   - Validates user existence by querying **Common Table 1 (`app_users`)**.
-   - Populates **Repo 2 Individual Tables (`customer_orders`, `order_items`)**.
-   - Emits log in **Common Table 2 (`audit_logs`)** (`service_name = "order-service"`).
-   - Emits notification in **Common Table 3 (`system_notifications`)**.
+### 📊 End-to-End Flow Diagram
 
-3. **Payment Processing (`repo3-payment-service` - Port 8083)**:
-   - Endpoint: `POST /api/payments/process`
-   - Validates payer existence by querying **Common Table 1 (`app_users`)**.
-   - Populates **Repo 3 Individual Tables (`payment_transactions`, `payment_invoices`)**.
-   - Emits log in **Common Table 2 (`audit_logs`)** (`service_name = "payment-service"`).
-   - Emits notification in **Common Table 3 (`system_notifications`)**.
+```
+[Customer Client / API]
+       │
+       │ 1. POST /api/users/register (Port 8081)
+       ▼
+┌───────────────────────────────────────────────────────────┐
+│ REPO 1: USER CORE SERVICE                                 │
+│ • Inserts master account into [app_users] (Common 1)      │
+│ • Inserts KYC details into [user_profiles] (Repo 1)       │
+│ • Inserts credentials into [user_credentials] (Repo 1)    │
+│ • Writes "USER_REGISTERED" into [audit_logs] (Common 2)   │
+│ • Dispatches welcome alert to [notifications] (Common 3)  │
+└───────────────────────────────────────────────────────────┘
+       │
+       │ (User ID is now established in Common Table: app_users)
+       │
+       │ 2. POST /api/orders/create (Port 8082)
+       ▼
+┌───────────────────────────────────────────────────────────┐
+│ REPO 2: ORDER SERVICE                                     │
+│ • Validates user exists in [app_users] (Common 1)         │
+│ • Inserts order header into [customer_orders] (Repo 2)    │
+│ • Inserts line items into [order_items] (Repo 2)          │
+│ • Writes "ORDER_CREATED" into [audit_logs] (Common 2)     │
+│ • Dispatches order alert to [notifications] (Common 3)    │
+└───────────────────────────────────────────────────────────┘
+       │
+       │ (Order ID & Total Amount established)
+       │
+       │ 3. POST /api/payments/process (Port 8083)
+       ▼
+┌───────────────────────────────────────────────────────────┐
+│ REPO 3: PAYMENT SERVICE                                   │
+│ • Validates user exists in [app_users] (Common 1)         │
+│ • Inserts charge into [payment_transactions] (Repo 3)     │
+│ • Calculates tax & generates [payment_invoices] (Repo 3)  │
+│ • Writes "PAYMENT_COMPLETED" to [audit_logs] (Common 2)   │
+│ • Dispatches receipt alert to [notifications] (Common 3)  │
+└───────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 🔍 Detailed Step-by-Step Functional Flows & Code References
+
+#### Flow 1: User Onboarding Flow ([UserService.java:L58-L98](file:///d:/ramu/Personal/Hexaware/Rapidx_Freddie_Rerpos/Multi_Repo_Simple/repo1-user-core-service/src/main/java/com/example/usercore/UserService.java#L58-L98))
+* **Endpoint**: `POST http://localhost:8081/api/users/register`
+* **What happens**:
+  1. Saves user master account into **Common Table 1 (`app_users`)**.
+  2. Saves address, phone, and KYC verification status into **Repo 1 Individual Table (`user_profiles`)**.
+  3. Hashes password and saves auth metadata into **Repo 1 Individual Table (`user_credentials`)**.
+  4. Records an audit entry into **Common Table 2 (`audit_logs`)** with `service_name = "user-core-service"`.
+  5. Queues a welcome email into **Common Table 3 (`system_notifications`)**.
+* **Controller**: [UserController.java](file:///d:/ramu/Personal/Hexaware/Rapidx_Freddie_Rerpos/Multi_Repo_Simple/repo1-user-core-service/src/main/java/com/example/usercore/UserCoreApplication.java#L16-L60)
+
+---
+
+#### Flow 2: Order Placement Flow ([OrderService.java:L55-L95](file:///d:/ramu/Personal/Hexaware/Rapidx_Freddie_Rerpos/Multi_Repo_Simple/repo2-order-service/src/main/java/com/example/orderservice/OrderService.java#L55-L95))
+* **Endpoint**: `POST http://localhost:8082/api/orders/create`
+* **What happens**:
+  1. **Cross-Repo Validation**: Queries **Common Table 1 (`app_users`)** to ensure the buyer exists. Throws `IllegalArgumentException` if the user is not found.
+  2. Saves order header (order number, calculated total) into **Repo 2 Individual Table (`customer_orders`)**.
+  3. Saves product SKUs, quantities, and pricing into **Repo 2 Individual Table (`order_items`)**.
+  4. Records an audit entry into **Common Table 2 (`audit_logs`)** with `service_name = "order-service"`.
+  5. Queues an SMS order confirmation into **Common Table 3 (`system_notifications`)**.
+* **Controller**: [OrderController.java](file:///d:/ramu/Personal/Hexaware/Rapidx_Freddie_Rerpos/Multi_Repo_Simple/repo2-order-service/src/main/java/com/example/orderservice/OrderApplication.java#L18-L58)
+
+---
+
+#### Flow 3: Payment & Invoicing Flow ([PaymentService.java:L55-L95](file:///d:/ramu/Personal/Hexaware/Rapidx_Freddie_Rerpos/Multi_Repo_Simple/repo3-payment-service/src/main/java/com/example/paymentservice/PaymentService.java#L55-L95))
+* **Endpoint**: `POST http://localhost:8083/api/payments/process`
+* **What happens**:
+  1. **Cross-Repo Validation**: Queries **Common Table 1 (`app_users`)** to verify the payer identity.
+  2. Generates a unique transaction reference and saves into **Repo 3 Individual Table (`payment_transactions`)**.
+  3. Computes sales tax (8%), generates invoice number, and saves into **Repo 3 Individual Table (`payment_invoices`)**.
+  4. Records an audit entry into **Common Table 2 (`audit_logs`)** with `service_name = "payment-service"`.
+  5. Queues an email payment receipt into **Common Table 3 (`system_notifications`)**.
+* **Controller**: [PaymentController.java](file:///d:/ramu/Personal/Hexaware/Rapidx_Freddie_Rerpos/Multi_Repo_Simple/repo3-payment-service/src/main/java/com/example/paymentservice/PaymentApplication.java#L18-L54)
+
+---
+
+### 🌐 Cross-Service Audit & Notification Inspection Flow
+After executing the 3 flows above, querying Repo 1 reveals cross-service tracking in action:
+- `GET http://localhost:8081/api/users/audit-logs`: Returns audit records contributed by **all 3 services** (`user-core-service`, `order-service`, `payment-service`) stored centrally in **Common Table 2 (`audit_logs`)**.
+- `GET http://localhost:8081/api/users/notifications/{userId}`: Returns all notifications triggered across **all 3 services** for that customer stored centrally in **Common Table 3 (`system_notifications`)**.
 
 ---
 
