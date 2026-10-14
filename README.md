@@ -12,6 +12,11 @@ Spring Boot Microservice managing **5 database tables** in PostgreSQL:
 ## Port
 `8081`
 
+## SQL Schema Files
+- **`schema-common-tables.sql`**: DDL and seed data for the 3 shared common tables (`app_users`, `audit_logs`, `system_notifications`).
+- **`schema-repo1-specific.sql`**: DDL and seed data for Repo 1 specific tables (`user_profiles`, `user_credentials`).
+- **`init-postgres-database.sql`**: Complete database initialization script covering all 9 tables across all 3 microservices.
+
 ## Functional Flow
 1. **User Registration Flow**:
    - Inserts record into `app_users` (Common Table 1)
