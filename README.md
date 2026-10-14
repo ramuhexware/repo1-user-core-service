@@ -15,7 +15,9 @@ Spring Boot Microservice managing **5 database tables** in PostgreSQL:
 ## SQL Schema Files
 - **`schema-common-tables.sql`**: DDL and seed data for the 3 shared common tables (`app_users`, `audit_logs`, `system_notifications`).
 - **`schema-repo1-specific.sql`**: DDL and seed data for Repo 1 specific tables (`user_profiles`, `user_credentials`).
-- **`init-postgres-database.sql`**: Complete database initialization script covering all 9 tables across all 3 microservices.
+
+## Documentation
+- See **`COMMON_README.md`** for the complete multi-repository architectural overview and cross-service flow documentation.
 
 ## Functional Flow
 1. **User Registration Flow**:
